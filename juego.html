@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CélulaQuest - Aventura Biológica</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a1a;
+    font-family: 'Exo 2', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #game-wrapper {
+    width: 900px;
+    height: 580px;
+    position: relative;
+    border: 3px solid #00ffcc;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 40px #00ffcc44, inset 0 0 60px #00000066;
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 55px;
+    background: linear-gradient(180deg, rgba(10,10,30,0.97) 0%, rgba(10,10,30,0.7) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 100;
+    border-bottom: 1px solid #00ffcc33;
+  }
+
+  #hud-left { display: flex; align-items: center; gap: 20px; }
+  #hud-right { display: flex; align-items: center; gap: 20px; }
+
+  .hud-item {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    color: #00ffcc;
+  }
+  .hud-icon { font-size: 18px; }
+  .hud-label { color: #aaa; font-size: 10px; display: block; line-height: 1; }
+  .hud-value { font-weight: 700; font-size: 15px; }
+
+  #level-badge {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+
+  #progress-bar-wrap {
+    width: 140px; height: 10px;
+    background: #1a1a3a;
+    border-radius: 5px;
+    border: 1px solid #333;
+    overflow: hidden;
+  }
+  #progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00ffcc, #00aaff);
+    border-radius: 5px;
+    transition: width 0.4s ease;
+  }
+
+  /* CANVAS */
+  #gameCanvas {
+    position: absolute;
+    top: 55px; left: 0;
+    width: 900px;
+    height: 525px;
+    display: block;
+  }
+
+  /* QUESTION PANEL */
+  #question-panel {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 5, 20, 0.92);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 30px;
+    backdrop-filter: blur(4px);
+  }
+  #question-panel.active { display: flex; }
+
+  #q-header {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #00ffcc;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  #q-cell-icon {
+    font-size: 60px;
+    margin-bottom: 12px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+  #q-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+    text-align: center;
+    max-width: 680px;
+    line-height: 1.5;
+    margin-bottom: 28px;
+  }
+
+  #q-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+    max-width: 680px;
+  }
+
+  .q-option {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(0,255,204,0.3);
+    border-radius: 12px;
+    padding: 14px 20px;
+    color: #ddd;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    line-height: 1.4;
+  }
+  .q-option:hover { background: rgba(0,255,204,0.12); border-color: #00ffcc; color: #fff; transform: translateY(-2px); }
+  .q-option.correct { background: rgba(0,255,100,0.2); border-color: #00ff64; color: #00ff64; }
+  .q-option.wrong { background: rgba(255,50,50,0.2); border-color: #ff3232; color: #ff5555; }
+  .q-option:disabled { cursor: default; transform: none; }
+
+  #q-feedback {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #aaa;
+    text-align: center;
+    max-width: 580px;
+    line-height: 1.5;
+    min-height: 40px;
+  }
+
+  #q-coins-earned {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    color: #ffd700;
+    font-weight: 700;
+    margin-top: 8px;
+    display: none;
+  }
+
+  #q-continue-btn {
+    margin-top: 18px;
+    background: linear-gradient(135deg, #00ffcc, #00aaff);
+    border: none;
+    border-radius: 10px;
+    padding: 12px 36px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #000;
+    cursor: pointer;
+    display: none;
+    transition: transform 0.15s;
+    letter-spacing: 1px;
+  }
+  #q-continue-btn:hover { transform: scale(1.05); }
+
+  /* LEVEL COMPLETE */
+  #level-complete {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.88);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+  }
+  #level-complete.active { display: flex; }
+  #lc-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 38px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 30px #ffd70088;
+    margin-bottom: 10px;
+  }
+  #lc-biome { font-size: 18px; color: #aaa; margin-bottom: 20px; }
+  #lc-coins { font-family: 'Orbitron', monospace; font-size: 28px; color: #ffd700; margin-bottom: 30px; }
+  #lc-next-btn {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    border: none; border-radius: 12px;
+    padding: 14px 48px;
+    font-family: 'Orbitron', monospace;
+    font-size: 15px; font-weight: 700;
+    color: #fff; cursor: pointer;
+    transition: transform 0.15s;
+  }
+  #lc-next-btn:hover { transform: scale(1.06); }
+
+  /* START SCREEN */
+  #start-screen {
+    position: absolute; inset: 0;
+    background: linear-gradient(160deg, #050510, #0d0d2b, #050510);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 400;
+  }
+  #start-screen.hidden { display: none; }
+  #start-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 52px; font-weight: 900;
+    background: linear-gradient(90deg, #00ffcc, #a855f7, #00aaff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  #start-sub { font-size: 14px; color: #888; letter-spacing: 3px; margin-bottom: 40px; }
+  #start-desc { color: #aaa; font-size: 14px; text-align: center; max-width: 500px; line-height: 1.7; margin-bottom: 36px; }
+  #biome-preview {
+    display: flex; gap: 12px; margin-bottom: 36px;
+  }
+  .biome-pill {
+    padding: 8px 16px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+    border: 1.5px solid;
+  }
+  #start-btn {
+    background: linear-gradient(135deg, #00ffcc, #00aaff);
+    border: none; border-radius: 12px;
+    padding: 16px 60px;
+    font-family: 'Orbitron', monospace;
+    font-size: 16px; font-weight: 700;
+    color: #000; cursor: pointer;
+    transition: transform 0.15s;
+    letter-spacing: 2px;
+  }
+  #start-btn:hover { transform: scale(1.06); }
+
+  /* KEYS HINT */
+  #keys-hint {
+    position: absolute;
+    bottom: 12px; right: 16px;
+    display: flex; gap: 6px; align-items: center;
+    z-index: 90;
+  }
+  .key-box {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 5px; padding: 3px 7px;
+    font-size: 13px; color: #888;
+  }
+
+  /* GAME OVER */
+  #game-over {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 500;
+  }
+  #game-over.active { display: flex; }
+  #go-title { font-family: 'Orbitron', monospace; font-size: 44px; font-weight: 900; color: #ff4444; margin-bottom: 14px; }
+  #go-score { font-family: 'Orbitron', monospace; font-size: 22px; color: #ffd700; margin-bottom: 30px; }
+  #go-restart {
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+    border: none; border-radius: 12px;
+    padding: 14px 48px; font-family: 'Orbitron', monospace;
+    font-size: 14px; font-weight: 700; color: #fff; cursor: pointer;
+    transition: transform 0.15s;
+  }
+  #go-restart:hover { transform: scale(1.06); }
+
+  /* WIN SCREEN */
+  #win-screen {
+    position: absolute; inset: 0;
+    background: linear-gradient(160deg, #0a0020, #1a003a);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 500;
+    text-align: center; padding: 30px;
+  }
+  #win-screen.active { display: flex; }
+  #win-title { font-family: 'Orbitron', monospace; font-size: 42px; font-weight: 900; color: #ffd700; text-shadow: 0 0 40px #ffd700; margin-bottom: 12px; }
+  #win-msg { color: #ccc; font-size: 15px; max-width: 500px; line-height: 1.7; margin-bottom: 20px; }
+  #win-coins { font-family: 'Orbitron', monospace; font-size: 30px; color: #ffd700; margin-bottom: 10px; }
+  #win-restart {
+    background: linear-gradient(135deg, #ffd700, #ff8800);
+    border: none; border-radius: 12px;
+    padding: 14px 48px; font-family: 'Orbitron', monospace;
+    font-size: 14px; font-weight: 700; color: #000; cursor: pointer;
+    transition: transform 0.15s; margin-top: 14px;
+  }
+  #win-restart:hover { transform: scale(1.06); }
+
+  .coin-pop {
+    position: absolute;
+    font-family: 'Orbitron', monospace;
+    font-size: 20px; font-weight: 700; color: #ffd700;
+    pointer-events: none; z-index: 500;
+    animation: coinpop 1.4s ease-out forwards;
+  }
+  @keyframes coinpop {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-70px) scale(1.4); }
+  }
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+
+  <!-- START SCREEN -->
+  <div id="start-screen">
+    <div id="start-logo">CélulaQuest</div>
+    <div id="start-sub">AVENTURA BIOLÓGICA</div>
+    <div id="start-desc">
+      Guía a tu explorador a través de 4 biomas fascinantes.<br>
+      Responde preguntas sobre <strong style="color:#00ffcc">Tipos de Células</strong> para ganar monedas y avanzar de nivel.<br>
+      ¡Demuestra tus conocimientos en Ciencias Biológicas!
+    </div>
+    <div id="biome-preview">
+      <div class="biome-pill" style="color:#4ade80;border-color:#4ade8066;background:rgba(74,222,128,0.08)">🌿 Bosque Celular</div>
+      <div class="biome-pill" style="color:#60a5fa;border-color:#60a5fa66;background:rgba(96,165,250,0.08)">🌊 Mar Procariota</div>
+      <div class="biome-pill" style="color:#f97316;border-color:#f9731666;background:rgba(249,115,22,0.08)">🌋 Volcán Eucariota</div>
+      <div class="biome-pill" style="color:#a855f7;border-color:#a855f766;background:rgba(168,85,247,0.08)">🔬 Cosmos Micro</div>
+    </div>
+    <button id="start-btn" onclick="startGame()">⚡ COMENZAR AVENTURA</button>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="hud-left">
+      <div id="level-badge">NIV. <span id="level-num">1</span></div>
+      <div class="hud-item">
+        <span class="hud-icon">🪙</span>
+        <div>
+          <span class="hud-label">MONEDAS</span>
+          <span class="hud-value" id="coins-display">0</span>
+        </div>
+      </div>
+      <div class="hud-item">
+        <span class="hud-icon">❤️</span>
+        <div>
+          <span class="hud-label">VIDAS</span>
+          <span class="hud-value" id="lives-display">3</span>
+        </div>
+      </div>
+    </div>
+    <div id="hud-right">
+      <div class="hud-item" style="flex-direction:column;align-items:flex-end;gap:3px;">
+        <span style="font-size:10px;color:#888;letter-spacing:1px;">PROGRESO</span>
+        <div id="progress-bar-wrap">
+          <div id="progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="hud-item" id="biome-label" style="color:#aaa;font-size:12px;">🌿 Bosque Celular</div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <canvas id="gameCanvas" width="900" height="525"></canvas>
+
+  <!-- KEYS HINT -->
+  <div id="keys-hint">
+    <span class="key-box">←</span>
+    <span class="key-box">→</span>
+    <span style="color:#666;font-size:11px;">mover</span>
+    <span class="key-box">↑</span>
+    <span style="color:#666;font-size:11px;">saltar</span>
+  </div>
+
+  <!-- QUESTION PANEL -->
+  <div id="question-panel">
+    <div id="q-header">🔬 PREGUNTA CIENTÍFICA</div>
+    <div id="q-cell-icon">🦠</div>
+    <div id="q-text"></div>
+    <div id="q-options"></div>
+    <div id="q-feedback"></div>
+    <div id="q-coins-earned"></div>
+    <button id="q-continue-btn" onclick="continueGame()">CONTINUAR →</button>
+  </div>
+
+  <!-- LEVEL COMPLETE -->
+  <div id="level-complete">
+    <div id="lc-title">🏆 ¡NIVEL SUPERADO!</div>
+    <div id="lc-biome" id="lc-biome-name"></div>
+    <div id="lc-coins">🪙 <span id="lc-coins-val">0</span> monedas ganadas</div>
+    <button id="lc-next-btn" onclick="nextLevel()">SIGUIENTE BIOMA →</button>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="game-over">
+    <div id="go-title">💀 GAME OVER</div>
+    <div id="go-score">🪙 Monedas: <span id="go-coins">0</span></div>
+    <button id="go-restart" onclick="restartGame()">🔄 INTENTAR DE NUEVO</button>
+  </div>
+
+  <!-- WIN SCREEN -->
+  <div id="win-screen">
+    <div id="win-title">🎉 ¡FELICITACIONES!</div>
+    <div id="win-msg">¡Has completado todos los biomas y demostrado un dominio excepcional de los Tipos de Células!<br>Eres un verdadero <strong style="color:#00ffcc">Biólogo Explorador</strong>.</div>
+    <div id="win-coins">🪙 Total: <span id="win-coins-val">0</span> monedas</div>
+    <div style="color:#aaa;font-size:13px;">Procariotas • Eucariotas • Células Vegetales • Células Animales</div>
+    <button id="win-restart" onclick="restartGame()">🔄 JUGAR DE NUEVO</button>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = 900, H = 525;
+
+// ============================================================
+// QUESTIONS DATABASE
+// ============================================================
+const QUESTIONS = {
+  0: [ // Bosque Celular - Procariotas vs Eucariotas básico
+    {
+      icon: '🦠', text: '¿Qué tipo de célula NO posee núcleo delimitado por membrana nuclear?',
+      options: ['Célula Procariota', 'Célula Eucariota Animal', 'Célula Eucariota Vegetal', 'Célula de Levadura'],
+      correct: 0,
+      feedback: '✅ ¡Correcto! Las células PROCARIOTAS carecen de núcleo membranoso. Su material genético (ADN) flota libremente en el citoplasma en una región llamada nucleoide.'
+    },
+    {
+      icon: '🌿', text: '¿Cuál es una característica EXCLUSIVA de las células vegetales?',
+      options: ['Mitocondrias', 'Pared celular de celulosa', 'Ribosomas', 'Membrana plasmática'],
+      correct: 1,
+      feedback: '✅ ¡Exacto! La pared celular de CELULOSA es exclusiva de las células vegetales. Les da rigidez y forma característica.'
+    },
+    {
+      icon: '🔬', text: '¿Qué organelo es el "centro de control" de la célula eucariota?',
+      options: ['Mitocondria', 'Ribosoma', 'Núcleo', 'Vacuola'],
+      correct: 2,
+      feedback: '✅ ¡Muy bien! El NÚCLEO contiene el ADN y dirige todas las actividades celulares. Es el centro de control de la célula eucariota.'
+    },
+    {
+      icon: '⚡', text: '¿Cómo se llama el organelo que produce energía (ATP) en la célula?',
+      options: ['Cloroplasto', 'Mitocondria', 'Lisosoma', 'Núcleo'],
+      correct: 1,
+      feedback: '✅ ¡Correcto! La MITOCONDRIA es la "central energética" de la célula. Realiza la respiración celular y produce ATP.'
+    },
+    {
+      icon: '🌱', text: '¿Qué organelo realizan la fotosíntesis en las células vegetales?',
+      options: ['Mitocondria', 'Ribosoma', 'Cloroplasto', 'Golgi'],
+      correct: 2,
+      feedback: '✅ ¡Brillante! El CLOROPLASTO contiene clorofila y realiza la fotosíntesis, convirtiendo luz solar en glucosa.'
+    },
+  ],
+  1: [ // Mar Procariota - Bacterias
+    {
+      icon: '🦠', text: '¿A qué dominio pertenecen las bacterias?',
+      options: ['Eukarya', 'Archaea', 'Bacteria', 'Fungi'],
+      correct: 2,
+      feedback: '✅ ¡Correcto! Las bacterias pertenecen al dominio BACTERIA. Son los organismos procariotas más comunes en la Tierra.'
+    },
+    {
+      icon: '🧬', text: '¿Cómo está organizado el ADN en una célula procariota?',
+      options: ['En cromosomas dentro del núcleo', 'Como ADN circular libre en el nucleoide', 'En mitocondrias', 'En el retículo endoplasmático'],
+      correct: 1,
+      feedback: '✅ ¡Así es! En procariotas el ADN es circular y se encuentra libre en el NUCLEOIDE, sin estar rodeado por membrana nuclear.'
+    },
+    {
+      icon: '🔭', text: '¿Cuál es el tamaño aproximado de una célula bacteriana?',
+      options: ['1-10 mm', '1-10 µm (micrómetros)', '1-10 cm', '100-200 µm'],
+      correct: 1,
+      feedback: '✅ ¡Correcto! Las bacterias miden entre 1-10 MICRÓMETROS (µm). Son mucho más pequeñas que las células eucariotas.'
+    },
+    {
+      icon: '🧫', text: '¿Qué estructura protectora rodea a muchas bacterias además de la membrana plasmática?',
+      options: ['Membrana nuclear', 'Pared celular de peptidoglicano', 'Cápsula de celulosa', 'Vacuola central'],
+      correct: 1,
+      feedback: '✅ ¡Excelente! La pared bacteriana está compuesta de PEPTIDOGLICANO, un polímero exclusivo de bacterias. Esta diferencia se aprovecha en los antibióticos.'
+    },
+    {
+      icon: '🌊', text: '¿Cuál de estos NO es un organelo membranoso de las bacterias?',
+      options: ['Ribosoma', 'Mitocondria', 'Flagelo', 'Pili'],
+      correct: 1,
+      feedback: '✅ ¡Correcto! Las bacterias NO poseen MITOCONDRIAS (ni ningún organelo con membrana doble). La respiración ocurre en la membrana plasmática.'
+    },
+  ],
+  2: [ // Volcán Eucariota - Células animales y vegetales
+    {
+      icon: '🐾', text: '¿Qué estructura poseen las células animales pero NO las vegetales?',
+      options: ['Mitocondria', 'Centrosoma y centriolos', 'Ribosoma', 'Membrana plasmática'],
+      correct: 1,
+      feedback: '✅ ¡Correcto! El CENTROSOMA con sus centriolos es exclusivo de células animales. Organiza el huso mitótico durante la división celular.'
+    },
+    {
+      icon: '💧', text: '¿Qué estructura es grande y central en células vegetales pero pequeña en células animales?',
+      options: ['Mitocondria', 'Lisosoma', 'Vacuola central', 'Retículo endoplasmático'],
+      correct: 2,
+      feedback: '✅ ¡Muy bien! La VACUOLA CENTRAL vegetal puede ocupar hasta el 90% del volumen celular. Almacena agua, nutrientes y desechos.'
+    },
+    {
+      icon: '🏭', text: '¿Cuál es la función del aparato de Golgi?',
+      options: ['Producir energía', 'Modificar y empaquetar proteínas para su envío', 'Realizar la fotosíntesis', 'Controlar la división celular'],
+      correct: 1,
+      feedback: '✅ ¡Excelente! El aparato de GOLGI es como el "sistema postal" de la célula: modifica proteínas del retículo endoplasmático y las empaqueta en vesículas para enviarlas a su destino.'
+    },
+    {
+      icon: '🔥', text: '¿Qué organelo digiere materiales dañados dentro de la célula animal?',
+      options: ['Ribosoma', 'Peroxisoma', 'Lisosoma', 'Nucléolo'],
+      correct: 2,
+      feedback: '✅ ¡Correcto! Los LISOSOMAS contienen enzimas digestivas y degradan macromoléculas, orgánulos dañados y patógenos. Son los "recicladores" celulares.'
+    },
+    {
+      icon: '🧪', text: '¿El retículo endoplasmático rugoso (RER) debe su nombre a...?',
+      options: ['Su textura áspera por los ribosomas', 'Que produce lípidos', 'Su color bajo el microscopio', 'Que está cerca del núcleo'],
+      correct: 0,
+      feedback: '✅ ¡Así es! El RER tiene RIBOSOMAS adheridos en su superficie, lo que le da aspecto rugoso. Estos ribosomas sintetizan proteínas destinadas a membranas o secreción.'
+    },
+  ],
+  3: [ // Cosmos Micro - Nivel avanzado
+    {
+      icon: '🔬', text: '¿Cuál es la teoría que explica el origen de mitocondrias y cloroplastos?',
+      options: ['Teoría celular de Schleiden', 'Teoría endosimbiótica de Margulis', 'Teoría de la evolución de Darwin', 'Teoría génica de Mendel'],
+      correct: 1,
+      feedback: '✅ ¡Brillante! La teoría ENDOSIMBIÓTICA propuesta por Lynn Margulis sostiene que mitocondrias y cloroplastos fueron bacterias que fueron englobadas por células ancestrales en una relación simbiótica.'
+    },
+    {
+      icon: '🧬', text: '¿Qué diferencia hay entre células somáticas y células germinales?',
+      options: ['Las somáticas tienen núcleo, las germinales no', 'Las somáticas son diploides (2n), las germinales son haploides (n)', 'Las germinales son más grandes', 'Las somáticas realizan fotosíntesis'],
+      correct: 1,
+      feedback: '✅ ¡Correcto! Las células SOMÁTICAS son diploides (2 juegos de cromosomas) y forman el cuerpo. Las GERMINALES son haploides (1 juego) y son óvulos y espermatozoides.'
+    },
+    {
+      icon: '⚗️', text: '¿Cuál de estas afirmaciones sobre la membrana plasmática es correcta?',
+      options: ['Es rígida e impermeable', 'Es una bicapa fosfolipídica fluida y selectivamente permeable', 'Solo existe en células vegetales', 'Está compuesta únicamente de proteínas'],
+      correct: 1,
+      feedback: '✅ ¡Excelente! La membrana plasmática es una BICAPA FOSFOLIPÍDICA. El modelo del mosaico fluido (Singer & Nicolson) describe sus proteínas flotando en una "mar" de lípidos.'
+    },
+    {
+      icon: '🌌', text: '¿Qué proceso describe el movimiento de agua a través de una membrana semipermeable?',
+      options: ['Difusión simple', 'Transporte activo', 'Ósmosis', 'Endocitosis'],
+      correct: 2,
+      feedback: '✅ ¡Perfecto! La ÓSMOSIS es el movimiento de agua desde zonas de menor concentración de solutos hacia zonas de mayor concentración, a través de una membrana semipermeable.'
+    },
+    {
+      icon: '🚀', text: '¿Cuál es la función del nucléolo dentro del núcleo celular?',
+      options: ['Almacenar ADN', 'Sintetizar ARN ribosomal y ensamblar ribosomas', 'Realizar la mitosis', 'Controlar el paso de sustancias'],
+      correct: 1,
+      feedback: '✅ ¡Correcto! El NUCLÉOLO sintetiza ARN ribosomal (ARNr) y ayuda a ensamblar las subunidades ribosomales, que luego pasan al citoplasma para traducir proteínas.'
+    },
+  ]
+};
+
+// ============================================================
+// BIOMES CONFIG
+// ============================================================
+const BIOMES = [
+  {
+    name: 'Bosque Celular',
+    emoji: '🌿',
+    bgColors: ['#0a1a0a', '#0d2010', '#071407'],
+    groundColor: '#1a3a10',
+    groundTop: '#2d5a1a',
+    skyGrad: ['#0a1a0a', '#102010'],
+    decorColors: ['#1d4a12', '#2a6018', '#4a8a22'],
+    platformColor: '#2d5a1a',
+    platformTop: '#4a8a22',
+    starColor: '#88ff88',
+    coinColor: '#ffd700',
+    obstacles: 3,
+    requiredCoins: 3,
+  },
+  {
+    name: 'Mar Procariota',
+    emoji: '🌊',
+    bgColors: ['#000d1a', '#000f22', '#000a14'],
+    groundColor: '#0a1a3a',
+    groundTop: '#1a3a6a',
+    skyGrad: ['#000d1a', '#001025'],
+    decorColors: ['#0a2a5a', '#1a4a8a', '#2a6aaa'],
+    platformColor: '#0a2050',
+    platformTop: '#1a4080',
+    starColor: '#88ccff',
+    coinColor: '#ffd700',
+    obstacles: 4,
+    requiredCoins: 4,
+  },
+  {
+    name: 'Volcán Eucariota',
+    emoji: '🌋',
+    bgColors: ['#1a0500', '#200800', '#140300'],
+    groundColor: '#3a1000',
+    groundTop: '#6a2000',
+    skyGrad: ['#1a0500', '#200600'],
+    decorColors: ['#4a1500', '#6a2500', '#8a3500'],
+    platformColor: '#4a1500',
+    platformTop: '#8a3500',
+    starColor: '#ffaa44',
+    coinColor: '#ffd700',
+    obstacles: 4,
+    requiredCoins: 4,
+  },
+  {
+    name: 'Cosmos Micro',
+    emoji: '🔬',
+    bgColors: ['#050010', '#08001a', '#030008'],
+    groundColor: '#150030',
+    groundTop: '#2a0060',
+    skyGrad: ['#050010', '#0a0020'],
+    decorColors: ['#200050', '#3a0080', '#5500aa'],
+    platformColor: '#1a0040',
+    platformTop: '#4a00a0',
+    starColor: '#cc88ff',
+    coinColor: '#ffd700',
+    obstacles: 5,
+    requiredCoins: 5,
+  }
+];
+
+// ============================================================
+// GAME STATE
+// ============================================================
+let state = {
+  running: false,
+  paused: false,
+  level: 0,
+  coins: 0,
+  lives: 3,
+  questionsAnswered: 0,
+  questionsCorrect: 0,
+  coinsThisLevel: 0,
+  requiredCoins: 0,
+  showingQuestion: false,
+  questionIndex: 0,
+  levelQuestions: [],
+};
+
+let player = {};
+let platforms = [];
+let obstacles = [];
+let coins_world = [];
+let questionZones = [];
+let particles = [];
+let bgStars = [];
+let cameraX = 0;
+let worldWidth = 3000;
+let keys = {};
+let animFrame = null;
+let lastTime = 0;
+
+// ============================================================
+// INIT
+// ============================================================
+function startGame() {
+  document.getElementById('start-screen').classList.add('hidden');
+  state.running = true;
+  state.level = 0;
+  state.coins = 0;
+  state.lives = 3;
+  loadLevel(0);
+}
+
+function loadLevel(lvl) {
+  state.level = lvl;
+  state.coinsThisLevel = 0;
+  state.questionsAnswered = 0;
+  state.questionsCorrect = 0;
+  state.showingQuestion = false;
+  state.levelQuestions = [...QUESTIONS[lvl]];
+  state.questionIndex = 0;
+  state.requiredCoins = BIOMES[lvl].requiredCoins;
+
+  cameraX = 0;
+  particles = [];
+
+  generateWorld(lvl);
+  generateStars();
+  updateHUD();
+  document.getElementById('question-panel').classList.remove('active');
+  document.getElementById('level-complete').classList.remove('active');
+
+  if (!animFrame) {
+    lastTime = performance.now();
+    animFrame = requestAnimationFrame(gameLoop);
+  }
+}
+
+function generateStars() {
+  bgStars = [];
+  for (let i = 0; i < 120; i++) {
+    bgStars.push({
+      x: Math.random() * worldWidth,
+      y: Math.random() * 400,
+      r: Math.random() * 2 + 0.5,
+      flicker: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function generateWorld(lvl) {
+  const biome = BIOMES[lvl];
+  worldWidth = 3200;
+
+  // Player
+  player = {
+    x: 80, y: 350, w: 36, h: 44,
+    vx: 0, vy: 0,
+    onGround: false,
+    facing: 1,
+    frame: 0, frameTimer: 0,
+    blinking: false, blinkTimer: 0,
+    color: '#00ffcc',
+    trail: []
+  };
+
+  // Ground
+  platforms = [
+    { x: 0, y: 440, w: worldWidth, h: 85, type: 'ground' }
+  ];
+
+  // Platforms
+  const platData = [
+    { x: 350, y: 360, w: 140, h: 20 },
+    { x: 600, y: 300, w: 120, h: 20 },
+    { x: 820, y: 370, w: 100, h: 20 },
+    { x: 1050, y: 280, w: 150, h: 20 },
+    { x: 1300, y: 360, w: 130, h: 20 },
+    { x: 1530, y: 290, w: 120, h: 20 },
+    { x: 1750, y: 370, w: 140, h: 20 },
+    { x: 1980, y: 300, w: 120, h: 20 },
+    { x: 2200, y: 360, w: 150, h: 20 },
+    { x: 2450, y: 290, w: 130, h: 20 },
+    { x: 2700, y: 370, w: 140, h: 20 },
+    { x: 2900, y: 300, w: 130, h: 20 },
+  ];
+  platData.forEach(p => platforms.push({ ...p, type: 'platform' }));
+
+  // Coins
+  coins_world = [];
+  const coinPositions = [
+    320, 600, 900, 1150, 1400, 1650, 1900, 2150, 2450, 2720, 2950
+  ];
+  coinPositions.forEach((cx, i) => {
+    coins_world.push({
+      x: cx, y: 390 - (i % 3) * 40,
+      w: 22, h: 22,
+      collected: false,
+      bobOffset: Math.random() * Math.PI * 2,
+      rotation: 0
+    });
+  });
+
+  // Question zones (glowing portals)
+  questionZones = [];
+  const qzPositions = [450, 1100, 1850, 2600];
+  qzPositions.slice(0, state.levelQuestions.length).forEach((qx, i) => {
+    questionZones.push({
+      x: qx, y: 355, w: 50, h: 90,
+      triggered: false, index: i,
+      pulse: Math.random() * Math.PI * 2
+    });
+  });
+
+  // Obstacles (spiky/enemy)
+  obstacles = [];
+  const obsPositions = [500, 900, 1400, 1900, 2400, 2800];
+  obsPositions.slice(0, biome.obstacles).forEach(ox => {
+    obstacles.push({
+      x: ox, y: 406, w: 34, h: 34,
+      vx: (Math.random() > 0.5 ? 1 : -1) * (0.7 + Math.random() * 0.5),
+      patrolMin: ox - 80, patrolMax: ox + 80,
+      frame: 0, frameTimer: 0
+    });
+  });
+}
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+function gameLoop(ts) {
+  const dt = Math.min((ts - lastTime) / 16.67, 3);
+  lastTime = ts;
+
+  if (!state.paused && !state.showingQuestion) {
+    update(dt);
+  }
+  render();
+  animFrame = requestAnimationFrame(gameLoop);
+}
+
+function update(dt) {
+  // Player movement
+  const spd = 3.5;
+  const JUMP = -10;
+  const GRAV = 0.5;
+
+  if (keys['ArrowLeft'] || keys['KeyA']) { player.vx = -spd; player.facing = -1; }
+  else if (keys['ArrowRight'] || keys['KeyD']) { player.vx = spd; player.facing = 1; }
+  else player.vx *= 0.75;
+
+  if ((keys['ArrowUp'] || keys['Space'] || keys['KeyW']) && player.onGround) {
+    player.vy = JUMP;
+    player.onGround = false;
+    spawnParticles(player.x + player.w/2, player.y + player.h, '#00ffcc', 6);
+  }
+
+  player.vy += GRAV * dt;
+  player.x += player.vx * dt;
+  player.y += player.vy * dt;
+
+  // Bounds
+  if (player.x < 0) player.x = 0;
+  if (player.x + player.w > worldWidth) player.x = worldWidth - player.w;
+
+  // Platform collisions
+  player.onGround = false;
+  platforms.forEach(p => {
+    if (collides(player, p)) {
+      // Top collision
+      if (player.vy > 0 && player.y + player.h - player.vy * dt <= p.y + 2) {
+        player.y = p.y - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      }
+      // Bottom
+      else if (player.vy < 0 && player.y >= p.y + p.h - 4) {
+        player.y = p.y + p.h;
+        player.vy = 0;
+      }
+    }
+  });
+
+  // Fall death
+  if (player.y > H + 100) {
+    loseLife();
+    return;
+  }
+
+  // Player trail
+  if (Math.abs(player.vx) > 0.5) {
+    player.trail.push({ x: player.x + player.w/2, y: player.y + player.h/2, alpha: 1 });
+    if (player.trail.length > 8) player.trail.shift();
+  }
+  player.trail.forEach(t => t.alpha -= 0.08);
+  player.trail = player.trail.filter(t => t.alpha > 0);
+
+  // Animation
+  player.frameTimer += dt;
+  if (player.frameTimer > 5) { player.frame = (player.frame + 1) % 4; player.frameTimer = 0; }
+
+  // Blink
+  if (player.blinking) {
+    player.blinkTimer -= dt;
+    if (player.blinkTimer <= 0) player.blinking = false;
+  }
+
+  // Camera
+  const camTarget = player.x - W/2 + player.w/2;
+  cameraX = Math.max(0, Math.min(camTarget, worldWidth - W));
+
+  // Coins
+  coins_world.forEach(c => {
+    if (!c.collected && collidesPoint(player, c)) {
+      c.collected = true;
+      state.coins++;
+      state.coinsThisLevel++;
+      spawnParticles(c.x, c.y, '#ffd700', 8);
+      showCoinPop(c.x - cameraX, c.y);
+      updateHUD();
+      checkLevelComplete();
+    }
+    c.bobOffset += 0.03 * dt;
+    c.rotation += 0.05 * dt;
+  });
+
+  // Question zones
+  questionZones.forEach(qz => {
+    qz.pulse += 0.04 * dt;
+    if (!qz.triggered && state.questionIndex <= qz.index) {
+      const px = player.x + player.w/2;
+      const py = player.y + player.h/2;
+      if (px > qz.x && px < qz.x + qz.w && py > qz.y && py < qz.y + qz.h) {
+        qz.triggered = true;
+        showQuestion(qz.index);
+      }
+    }
+  });
+
+  // Obstacles
+  obstacles.forEach(ob => {
+    ob.x += ob.vx * dt;
+    if (ob.x <= ob.patrolMin || ob.x + ob.w >= ob.patrolMax) ob.vx *= -1;
+    ob.frameTimer += dt;
+    if (ob.frameTimer > 8) { ob.frame = (ob.frame+1)%2; ob.frameTimer = 0; }
+
+    if (!player.blinking && collides(player, ob)) {
+      loseLife();
+    }
+  });
+
+  // Particles
+  particles.forEach(p => {
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += 0.15 * dt;
+    p.life -= dt * 0.04;
+  });
+  particles = particles.filter(p => p.life > 0);
+}
+
+function collides(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x &&
+         a.y < b.y + b.h && a.y + a.h > b.y;
+}
+function collidesPoint(player, obj) {
+  const cx = obj.x + obj.w/2, cy = obj.y + obj.h/2;
+  return cx > player.x && cx < player.x + player.w &&
+         cy > player.y && cy < player.y + player.h;
+}
+
+function loseLife() {
+  if (player.blinking) return;
+  state.lives--;
+  updateHUD();
+  player.blinking = true;
+  player.blinkTimer = 90;
+  player.x = 80; player.y = 350; player.vx = 0; player.vy = 0;
+  cameraX = 0;
+  spawnParticles(player.x, player.y, '#ff4444', 12);
+  if (state.lives <= 0) {
+    setTimeout(() => showGameOver(), 400);
+  }
+}
+
+function spawnParticles(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const ang = (Math.PI * 2 * i) / n + Math.random() * 0.5;
+    const spd = 2 + Math.random() * 3;
+    particles.push({ x, y, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd - 2, color, life: 1, size: 3+Math.random()*4 });
+  }
+}
+
+function showCoinPop(sx, sy) {
+  const div = document.createElement('div');
+  div.className = 'coin-pop';
+  div.textContent = '+1 🪙';
+  div.style.left = (sx + 450) + 'px'; // offset for wrapper position
+  div.style.top = (sy + 60) + 'px';
+  document.getElementById('game-wrapper').appendChild(div);
+  setTimeout(() => div.remove(), 1400);
+}
+
+function checkLevelComplete() {
+  const needed = state.requiredCoins;
+  const answered = state.levelQuestions.filter((_, i) => i < state.questionIndex).length;
+  if (state.coinsThisLevel >= needed && state.questionIndex >= Math.min(state.levelQuestions.length, needed)) {
+    setTimeout(() => showLevelComplete(), 500);
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  const biome = BIOMES[state.level];
+
+  // Sky background
+  const skyGrad = ctx.createLinearGradient(0,0,0,H);
+  skyGrad.addColorStop(0, biome.skyGrad[0]);
+  skyGrad.addColorStop(1, biome.skyGrad[1]);
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  const sc = biome.starColor;
+  bgStars.forEach(s => {
+    const flicker = 0.6 + 0.4 * Math.sin(s.flicker + performance.now()/1200);
+    ctx.beginPath();
+    ctx.arc(s.x - cameraX * 0.3, s.y, s.r * flicker, 0, Math.PI*2);
+    ctx.fillStyle = sc + Math.floor(flicker*200).toString(16).padStart(2,'0');
+    ctx.fill();
+  });
+
+  // Background decor
+  biome.decorColors.forEach((dc, di) => {
+    for (let i = 0; i < 8; i++) {
+      const bx = ((i * 420 + di * 140) - cameraX * (0.4 + di*0.1)) % (W+200) - 100;
+      drawBiomeDecor(bx, biome, di, dc);
+    }
+  });
+
+  ctx.save();
+  ctx.translate(-cameraX, 0);
+
+  // Platforms
+  platforms.forEach(p => {
+    if (p.x + p.w < cameraX - 50 || p.x > cameraX + W + 50) return;
+    if (p.type === 'ground') {
+      ctx.fillStyle = biome.groundColor;
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.fillStyle = biome.groundTop;
+      ctx.fillRect(p.x, p.y, p.w, 10);
+    } else {
+      ctx.fillStyle = biome.platformColor;
+      ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 6);
+      ctx.fill();
+      ctx.fillStyle = biome.platformTop;
+      ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, 6, [6,6,0,0]);
+      ctx.fill();
+    }
+  });
+
+  // Coins
+  coins_world.forEach(c => {
+    if (c.collected) return;
+    if (c.x < cameraX - 40 || c.x > cameraX + W + 40) return;
+    const bob = Math.sin(c.bobOffset) * 5;
+    ctx.save();
+    ctx.translate(c.x + c.w/2, c.y + c.h/2 + bob);
+    ctx.rotate(c.rotation);
+    // Coin glow
+    ctx.shadowBlur = 14; ctx.shadowColor = '#ffd700';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, c.w/2, c.h/2, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#ffd700';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillStyle = '#a06000';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('¢', 0, 1);
+    ctx.restore();
+  });
+
+  // Question zones
+  questionZones.forEach(qz => {
+    if (qz.triggered && state.questionIndex > qz.index) return;
+    const pulse = Math.sin(qz.pulse) * 0.3 + 0.7;
+    ctx.save();
+    // Portal glow
+    const pg = ctx.createRadialGradient(qz.x + qz.w/2, qz.y + qz.h/2, 10, qz.x + qz.w/2, qz.y + qz.h/2, 50);
+    pg.addColorStop(0, `rgba(168,85,247,${0.5*pulse})`);
+    pg.addColorStop(1, 'rgba(168,85,247,0)');
+    ctx.fillStyle = pg;
+    ctx.fillRect(qz.x - 20, qz.y - 20, qz.w + 40, qz.h + 40);
+    // Portal rect
+    ctx.strokeStyle = `rgba(200,100,255,${pulse})`;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 20; ctx.shadowColor = '#a855f7';
+    ctx.beginPath(); ctx.roundRect(qz.x, qz.y, qz.w, qz.h, 8); ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Icon
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('❓', qz.x + qz.w/2, qz.y + qz.h/2 - 8);
+    ctx.font = 'bold 9px Exo 2, sans-serif';
+    ctx.fillStyle = '#cc88ff';
+    ctx.fillText('PREGUNTA', qz.x + qz.w/2, qz.y + qz.h/2 + 18);
+    ctx.restore();
+  });
+
+  // Obstacles
+  obstacles.forEach(ob => {
+    if (ob.x + ob.w < cameraX - 50 || ob.x > cameraX + W + 50) return;
+    ctx.save();
+    const wobble = Math.sin(performance.now()/200 + ob.x) * 3;
+    ctx.translate(ob.x + ob.w/2, ob.y + ob.h/2 + wobble);
+    // Enemy body
+    ctx.shadowBlur = 10; ctx.shadowColor = '#ff4444';
+    ctx.fillStyle = '#cc2200';
+    ctx.beginPath(); ctx.arc(0, 2, 16, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // Spikes
+    for (let s = 0; s < 6; s++) {
+      const ang = (Math.PI*2*s/6) - Math.PI/2;
+      ctx.fillStyle = '#ff4444';
+      ctx.save(); ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(-5, -22);
+      ctx.lineTo(5, -22);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    // Eyes
+    ctx.fillStyle = '#ffff00';
+    ctx.beginPath(); ctx.arc(-5, 0, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5, 0, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(-5, 0, 2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5, 0, 2, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+
+  // Particles
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // PLAYER
+  drawPlayer();
+
+  ctx.restore();
+
+  // Level exit sign
+  const exitX = worldWidth - 150 - cameraX;
+  if (exitX < W + 100) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,255,204,0.15)';
+    ctx.strokeStyle = '#00ffcc';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 20; ctx.shadowColor = '#00ffcc';
+    ctx.beginPath(); ctx.roundRect(exitX - 60, 350, 120, 80, 10); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🏁', exitX, 380);
+    ctx.font = 'bold 11px Orbitron, monospace'; ctx.fillStyle = '#00ffcc';
+    ctx.fillText('SALIDA', exitX, 405);
+    ctx.restore();
+  }
+
+  // HUD overlay (progress bar update)
+  updateProgressBar();
+}
+
+function drawPlayer() {
+  const p = player;
+  if (p.blinking && Math.floor(performance.now()/80) % 2 === 0) return;
+
+  // Trail
+  p.trail.forEach((t, i) => {
+    ctx.save();
+    ctx.globalAlpha = t.alpha * 0.4;
+    ctx.fillStyle = '#00ffcc';
+    ctx.beginPath(); ctx.arc(t.x, t.y, 8 * t.alpha, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+
+  ctx.save();
+  ctx.translate(p.x + p.w/2, p.y + p.h/2);
+  if (p.facing === -1) ctx.scale(-1, 1);
+
+  const legBob = Math.sin(performance.now()/150) * (Math.abs(p.vx) > 0.3 ? 6 : 0);
+
+  // Shadow
+  ctx.save();
+  ctx.translate(0, p.h/2 + 2);
+  ctx.scale(1, 0.3);
+  ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(0,255,204,0.2)'; ctx.fill();
+  ctx.restore();
+
+  // Legs
+  ctx.fillStyle = '#006688';
+  ctx.beginPath(); ctx.roundRect(-10, 12 + legBob, 9, 14, 3); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(1, 12 - legBob, 9, 14, 3); ctx.fill();
+
+  // Body
+  ctx.shadowBlur = 14; ctx.shadowColor = '#00ffcc';
+  ctx.fillStyle = '#007799';
+  ctx.beginPath(); ctx.roundRect(-13, -6, 26, 22, 6); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Suit detail
+  ctx.strokeStyle = '#00ffcc55'; ctx.lineWidth = 1;
+  ctx.strokeRect(-9, -2, 18, 14);
+
+  // Arms
+  const armWave = Math.sin(performance.now()/120) * (Math.abs(p.vx) > 0.3 ? 8 : 2);
+  ctx.fillStyle = '#006688';
+  ctx.beginPath(); ctx.roundRect(-18, -3 + armWave, 7, 12, 3); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(11, -3 - armWave, 7, 12, 3); ctx.fill();
+
+  // Helmet
+  ctx.fillStyle = '#004455';
+  ctx.beginPath(); ctx.arc(0, -12, 15, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 8; ctx.shadowColor = '#00ffccaa';
+  ctx.fillStyle = 'rgba(0,255,204,0.25)';
+  ctx.beginPath(); ctx.arc(0, -12, 13, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Eyes (visor)
+  ctx.fillStyle = '#00ffcc';
+  ctx.beginPath(); ctx.ellipse(-4, -13, 4, 3, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(4, -13, 4, 3, 0, 0, Math.PI*2); ctx.fill();
+
+  // Jump stretch
+  if (!p.onGround && p.vy < -3) {
+    ctx.strokeStyle = '#00ffcc44'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0,-24); ctx.lineTo(-4,-30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-24); ctx.lineTo(4,-30); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawBiomeDecor(bx, biome, di, color) {
+  ctx.save();
+  const lv = state.level;
+  if (lv === 0) { // Forest trees
+    ctx.fillStyle = color;
+    const h = 80 + di*30;
+    ctx.beginPath();
+    ctx.moveTo(bx, 445);
+    ctx.lineTo(bx - 30, 445 - h);
+    ctx.lineTo(bx + 30, 445 - h);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(bx, 445 - h * 0.4);
+    ctx.lineTo(bx - 22, 445 - h*0.8);
+    ctx.lineTo(bx + 22, 445 - h*0.8);
+    ctx.closePath(); ctx.fill();
+  } else if (lv === 1) { // Underwater
+    ctx.strokeStyle = color + 'aa';
+    ctx.lineWidth = 3 + di;
+    ctx.beginPath();
+    const wh = 60 + di*20;
+    for (let i = 0; i < wh; i++) {
+      ctx.lineTo(bx + Math.sin(i*0.2 + performance.now()/800)*12, 450 - i);
+    }
+    ctx.stroke();
+  } else if (lv === 2) { // Volcano rocks
+    ctx.fillStyle = color;
+    const rh = 50 + di*25;
+    ctx.beginPath();
+    ctx.moveTo(bx - 25, 445);
+    ctx.lineTo(bx, 445 - rh);
+    ctx.lineTo(bx + 25, 445);
+    ctx.closePath(); ctx.fill();
+  } else { // Cosmic
+    ctx.fillStyle = color + '55';
+    ctx.beginPath();
+    ctx.arc(bx, 440 - di*30, 20 + di*15, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = color + '44'; ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function updateProgressBar() {
+  const needed = state.requiredCoins;
+  const pct = Math.min((state.coinsThisLevel / needed) * 100, 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function updateHUD() {
+  document.getElementById('coins-display').textContent = state.coins;
+  document.getElementById('lives-display').textContent = state.lives;
+  document.getElementById('level-num').textContent = state.level + 1;
+  const b = BIOMES[state.level];
+  document.getElementById('biome-label').textContent = b.emoji + ' ' + b.name;
+}
+
+// ============================================================
+// QUESTIONS
+// ============================================================
+function showQuestion(index) {
+  if (index >= state.levelQuestions.length) return;
+  state.showingQuestion = true;
+  state.paused = true;
+
+  const q = state.levelQuestions[index];
+  document.getElementById('q-cell-icon').textContent = q.icon;
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('q-feedback').textContent = '';
+  document.getElementById('q-coins-earned').style.display = 'none';
+  document.getElementById('q-continue-btn').style.display = 'none';
+
+  const opts = document.getElementById('q-options');
+  opts.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'q-option';
+    btn.textContent = ['A', 'B', 'C', 'D'][i] + ') ' + opt;
+    btn.onclick = () => answerQuestion(i, q, btn);
+    opts.appendChild(btn);
+  });
+
+  document.getElementById('question-panel').classList.add('active');
+  state.questionIndex = index + 1;
+}
+
+function answerQuestion(chosen, q, btn) {
+  const opts = document.querySelectorAll('.q-option');
+  opts.forEach(b => { b.disabled = true; });
+
+  const correct = chosen === q.correct;
+  btn.classList.add(correct ? 'correct' : 'wrong');
+  opts[q.correct].classList.add('correct');
+
+  document.getElementById('q-feedback').textContent = q.feedback;
+
+  if (correct) {
+    const earned = 2;
+    state.coins += earned;
+    state.coinsThisLevel += earned;
+    state.questionsCorrect++;
+    document.getElementById('q-coins-earned').textContent = '+' + earned + ' 🪙';
+    document.getElementById('q-coins-earned').style.display = 'block';
+    updateHUD();
+    spawnParticles(450, 300, '#ffd700', 12);
+  } else {
+    state.lives--;
+    updateHUD();
+    if (state.lives <= 0) {
+      setTimeout(() => { closeQuestion(); showGameOver(); }, 1500);
+      return;
+    }
+  }
+
+  state.questionsAnswered++;
+  document.getElementById('q-continue-btn').style.display = 'block';
+}
+
+function continueGame() {
+  closeQuestion();
+  checkLevelComplete();
+}
+
+function closeQuestion() {
+  document.getElementById('question-panel').classList.remove('active');
+  state.showingQuestion = false;
+  state.paused = false;
+}
+
+// ============================================================
+// LEVEL / GAME FLOW
+// ============================================================
+function showLevelComplete() {
+  state.paused = true;
+  const b = BIOMES[state.level];
+  document.getElementById('lc-biome').textContent = b.emoji + ' ' + b.name + ' completado';
+  document.getElementById('lc-coins-val').textContent = state.coins;
+  document.getElementById('level-complete').classList.add('active');
+}
+
+function nextLevel() {
+  document.getElementById('level-complete').classList.remove('active');
+  if (state.level + 1 >= BIOMES.length) {
+    showWin();
+    return;
+  }
+  cancelAnimationFrame(animFrame);
+  animFrame = null;
+  loadLevel(state.level + 1);
+  state.paused = false;
+}
+
+function showGameOver() {
+  state.paused = true;
+  cancelAnimationFrame(animFrame);
+  animFrame = null;
+  document.getElementById('go-coins').textContent = state.coins;
+  document.getElementById('game-over').classList.add('active');
+}
+
+function showWin() {
+  document.getElementById('win-coins-val').textContent = state.coins;
+  document.getElementById('win-screen').classList.add('active');
+}
+
+function restartGame() {
+  document.getElementById('game-over').classList.remove('active');
+  document.getElementById('win-screen').classList.remove('active');
+  document.getElementById('level-complete').classList.remove('active');
+  cancelAnimationFrame(animFrame);
+  animFrame = null;
+  state.coins = 0;
+  state.lives = 3;
+  loadLevel(0);
+  state.paused = false;
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) {
+    e.preventDefault();
+  }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+</script>
+</body>
+</html>
