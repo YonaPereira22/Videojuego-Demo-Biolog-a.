@@ -1,0 +1,60 @@
+{
+  "autor": "Yonhatan Pereira",
+  "titulo": "Demo Biología",
+  "categoria": "Biología",
+  "juego": {
+    "nombre": "CélulaQuest: Aventura Biológica",
+    "version": "1.0.0",
+    "descripcion": "Videojuego educativo interactivo sobre Tipos de Células para la unidad curricular de Ciencias Biológicas. El jugador recorre 4 biomas respondiendo preguntas científicas y recolectando monedas para avanzar de nivel.",
+    "unidad_curricular": "Ciencias Biológicas",
+    "tema": "Tipos de Células",
+    "nivel_educativo": "Secundaria / Educación Media",
+    "idioma": "Español",
+    "fecha_creacion": "2026-05-12",
+    "archivo_juego": "celulas_adventure.html"
+  },
+  "contenido_educativo": {
+    "subtemas": [
+      "Células Procariotas",
+      "Células Eucariotas",
+      "Células Vegetales",
+      "Células Animales",
+      "Organelos celulares",
+      "Membrana plasmática",
+      "Teoría endosimbiótica"
+    ],
+    "niveles": [
+      {
+        "id": 1,
+        "nombre": "Bosque Celular",
+        "tema": "Procariotas vs Eucariotas - conceptos básicos",
+        "preguntas": 5
+      },
+      {
+        "id": 2,
+        "nombre": "Mar Procariota",
+        "tema": "Bacterias: estructura, dominio y características",
+        "preguntas": 5
+      },
+      {
+        "id": 3,
+        "nombre": "Volcán Eucariota",
+        "tema": "Células animales y vegetales - organelos",
+        "preguntas": 5
+      },
+      {
+        "id": 4,
+        "nombre": "Cosmos Micro",
+        "tema": "Conceptos avanzados: membrana, ósmosis, teoría endosimbiótica",
+        "preguntas": 5
+      }
+    ],
+    "total_preguntas": 20
+  },
+  "mecanicas": {
+    "control": "Teclado (flechas direccionales + espacio para saltar)",
+    "sistema_puntuacion": "Monedas recolectadas en el mapa + 2 monedas bonus por respuesta correcta",
+    "vidas": 3,
+    "objetivo": "Recolectar monedas y responder preguntas correctamente para avanzar de bioma en bioma"
+  }
+}
